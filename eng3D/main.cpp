@@ -1,8 +1,122 @@
-
-#include <loophelp.cpp>
+#include <Player.h>
 #include <common/loadShader.hpp>
 
 GLFWwindow* window;
+//update rotation based on tick delta
+
+
+
+
+
+void drawObjects(GLuint MatrixID, glm::mat4 MVP, GLuint vertexbuffer, GLuint colorbuffer, int vcount) {
+	//MVP setup
+	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+
+	//vertex setup stuff
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	//color setup stuff
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	//draw call
+	glDrawArrays(GL_TRIANGLES, 0, vcount);
+
+	//cleanup
+	glDisableVertexAttribArray(0);
+	return;
+}
+
+double update(std::chrono::time_point<std::chrono::system_clock> &prev, std::chrono::time_point<std::chrono::system_clock> &current) {
+	prev = current;
+	current = std::chrono::system_clock::now();
+	std::chrono::duration<double> frame_time = current - prev;
+	return frame_time.count();
+}
+
+void getMouseMovement(GLFWwindow* window, double& prev_x, double& cur_x, double& prev_y, double& cur_y, float speed, float &dx, float &dy) {
+	prev_x = cur_x;
+	prev_y = cur_y;
+	glfwGetCursorPos(window, &cur_x, &cur_y);
+	dx = (prev_x - cur_x)*speed;
+	dy = (prev_y - cur_y)*speed;
+}
+
+glm::mat4 updateCamera(Player &player, GLFWwindow* window, double frame_time, float dx, float dy) {
+	float speed = 1.0f;
+	float distance = speed * frame_time;
+	if (glfwGetKey(window, GLFW_KEY_A)) {
+		player.move('x', -1 * distance);
+	}
+	if (glfwGetKey(window, GLFW_KEY_D)) {
+		player.move('x', 1 * distance);
+	}
+	if (glfwGetKey(window, GLFW_KEY_S)) {
+		player.move('z', -1 * distance);
+	}
+	if (glfwGetKey(window, GLFW_KEY_W)) {
+		player.move('z', distance);
+	}
+	player.rotate('y', dx);
+	player.rotate('x', dy);
+	return player.getView();
+}
+
+void getRectVertices(float width, float length, float height, std::vector<GLfloat> &g_vertex_buffer_data) {
+	GLfloat vertices[] = {
+		0.0f, 0.0f, 0.0f,
+		width, 0.0f, 0.0f,
+		width, length, 0.0f,//
+		0.0f, length, 0.0f,
+		0.0f, 0.0f, 0.0f,
+		width, length, 0.0f,//
+		0.0f, 0.0f, 0.0f,
+		width, 0.0f, 0.0f,
+		width, 0.0f, height,//
+		0.0f, 0.0f, height,
+		0.0f, 0.0f, 0.0f,
+		width, 0.0f, height,//
+		0.0f, 0.0f, 0.0f,
+		0.0f, length, 0.0f,
+		0.0f, length, height,//
+		0.0f, 0.0f,height,
+		0.0f, 0.0f, 0.0f,
+		0.0f, length, height,//
+		0.0f, 0.0f, height,
+		width, 0.0f, height,
+		width, length,height,//
+		0.0f, length, height,
+		0.0f, 0.0f, height,
+		width, length, height,//
+		0.0f, length, 0.0f,
+		width, length, 0.0f,
+		width, length, height,//
+		0.0f, length, height,
+		0.0f, length, 0.0f,
+		width, length, height,//
+		width, 0.0f, 0.0f,
+		width, length, 0.0f,
+		width, length, height,//
+		width, 0.0f,height,
+		width, 0.0f, 0.0f,
+		width, length, height//
+	};
+	g_vertex_buffer_data.assign(vertices, vertices + 108);
+	return;
+}
+
+GLfloat* getRectColor(float r, float g, float b, static const GLfloat *colors) {
+	GLfloat g_color_buffer_data[36];
+	for (int i = 0; i < 12; i++) {
+		g_color_buffer_data[i * 3] = r;
+		g_color_buffer_data[i * 3 + 1] = g;
+		g_color_buffer_data[i * 3 + 2] = b;
+	}
+	return g_color_buffer_data;
+}
 
 void setupHints() {
 	glfwWindowHint(GLFW_SAMPLES, 4);
@@ -41,26 +155,22 @@ int initGLEW() {
 	}
 	return 0;
 }
+void configInput() {
+	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	return;
+}
 
 int main(void)
 {
-	
-	// Initialise GLFW
 	initGLFW();
-	//setup GLFW window hints
 	setupHints();
-	// Open a window and create its OpenGL context
 	openWindow();
-	// Initialize GLEW
 	initGLEW();
-
-	// Ensure we can capture the escape key being pressed below
-	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	configInput();
 
 	// Dark blue background
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-
 	// Create vertex array object and set it as the current one
 	GLuint VertexArrayID;
 	glGenVertexArrays(1, &VertexArrayID);
@@ -126,6 +236,10 @@ int main(void)
 	Camera cam;
 	cam.position(glm::vec3(0, 0, 8));
 	glm::mat4 View = cam.getView();
+	Player player;
+	player.position(glm::vec3(0, 0, 8));
+	glm::mat4 playerView = player.getView();
+	View = playerView;
 	// cube model mat
 	glm::mat4 CubeModel = glm::mat4(1.0f);
 	glm::mat4 CubeTranslation = glm::translate(glm::vec3(1.0f, 0.0f, 0.0f));
@@ -166,6 +280,13 @@ int main(void)
 	// set to array buffer
 	glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data), g_color_buffer_data, GL_STATIC_DRAW);
+
+	std::vector<PhysicsObject*> objects;
+	PhysicsObject* floor = new Rectangle;
+	floor->Translate(0, -10, 0);
+	floor->Scale(100.0f, 0, 100.0f);
+	floor->ConfigBuffers();
+	objects.push_back(floor);
 	std::chrono::time_point<std::chrono::system_clock> prev, current;
 	double prev_x, prev_y;
 	double cur_x=0, cur_y=0;
@@ -182,18 +303,14 @@ int main(void)
 			rotation -= 360.0f;
 		}
 		TriRotation = glm::rotate(rotation, glm::vec3(0.0f, 0.0f, -1.0f));
-		//View = updateCamera(View, window, frame_time);
-		prev_x = cur_x;
-		prev_y = cur_y;
-		glfwGetCursorPos(window, &cur_x, &cur_y);
-		dx = (prev_x-cur_x)*.001;
-		dy = (prev_y-cur_y)*.001;
-		View = updateCamera(cam, window, frame_time, dx, dy);
+		getMouseMovement(window, prev_x, cur_x, prev_y, cur_y, .001, dx, dy);
+		View = updateCamera(player, window, frame_time, dx, dy);
 
 		
 		TriModel = TriTranslation*TriRotation*TriScale*glm::mat4(1.0f);
 		triMVP = Projection*View*TriModel;
 		cubeMVP = Projection*View*CubeModel;
+		player.update((float)frame_time);
 
 		//render
 		glEnable(GL_DEPTH_TEST);
@@ -205,6 +322,8 @@ int main(void)
 		drawObjects(MatrixID, cubeMVP, vertexbuffer, colorbuffer, 3 * 6 * 2);
 		//draw triangle
 		drawObjects(MatrixID, triMVP, trivertexbuffer, colorbuffer, 3);
+		glm::mat4 floorMVP = Projection*View*objects[0]->GetModel();
+		drawObjects(MatrixID, floorMVP, objects[0]->GetVertexBufferID(), objects[0]->GetColorBufferID(), objects[0]->GetVertexCount());
 		// Swap buffers
 		glfwSwapBuffers(window);
 		glfwPollEvents();
