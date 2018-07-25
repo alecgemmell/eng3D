@@ -19,6 +19,8 @@ public:
 	void Translate(float x, float y, float z);
 	void Position(float x, float y, float z);
 	void ConfigBuffers();
+	glm::vec3 GetScale();
+	glm::vec3 GetPosition();
 	glm::mat4 GetModel();
 	std::vector<GLfloat> GetVertexBufferData();
 	std::vector<GLfloat> GetColorBufferData();

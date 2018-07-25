@@ -310,7 +310,7 @@ int main(void)
 		TriModel = TriTranslation*TriRotation*TriScale*glm::mat4(1.0f);
 		triMVP = Projection*View*TriModel;
 		cubeMVP = Projection*View*CubeModel;
-		player.update((float)frame_time);
+		player.update(objects[0], (float)frame_time);
 
 		//render
 		glEnable(GL_DEPTH_TEST);

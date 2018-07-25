@@ -45,6 +45,16 @@ void PhysicsObject::ConfigBuffers()
 	return;
 }
 
+glm::vec3 PhysicsObject::GetScale()
+{
+	return scale;
+}
+
+glm::vec3 PhysicsObject::GetPosition()
+{
+	return position;
+}
+
 glm::mat4 PhysicsObject::GetModel()
 {
 	return glm::translate(position)*glm::scale(scale)*glm::mat4(1.0f);
